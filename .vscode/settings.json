@@ -1,0 +1,12 @@
+﻿{
+  "liveServer.settings.ignoreFiles": [
+    "**/.git/**",
+    "**/.venv/**",
+    "**/database/**",
+    "**/*.db",
+    "**/log_collector/generated/**",
+    "**/ai_models/artifacts/**"
+  ],
+  "liveServer.settings.wait": 1000,
+  "liveServer.settings.NoBrowser": false
+}

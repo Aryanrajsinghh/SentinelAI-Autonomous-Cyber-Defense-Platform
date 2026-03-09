@@ -1,0 +1,85 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SentinelAI - Autonomous Cyber Defense Platform</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>SentinelAI - Autonomous Cyber Defense Platform</h1>
+      <p>SentinelAI - Autonomous Cyber Defense Platform</p>
+    </header>
+
+    <main>
+      <section class="cards">
+        <article class="card">
+          <h3>Total Alerts</h3>
+          <p id="totalAlerts">0</p>
+        </article>
+        <article class="card">
+          <h3>High Risk Alerts</h3>
+          <p id="highRiskAlerts">0</p>
+        </article>
+        <article class="card">
+          <h3>Top Threat Type</h3>
+          <p id="topThreat">-</p>
+        </article>
+      </section>
+
+      <section class="panel filters-panel">
+        <h2>Filters</h2>
+        <div class="filters-row">
+          <label>
+            Risk Level
+            <select id="riskFilter">
+              <option value="ALL">All</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+          </label>
+
+          <label>
+            Attack Type
+            <select id="attackFilter">
+              <option value="ALL">All</option>
+            </select>
+          </label>
+
+          <label>
+            Source IP
+            <input id="ipFilter" type="text" placeholder="e.g. 45.12.92.101" />
+          </label>
+
+          <button id="clearFilters" type="button">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Threat Distribution</h2>
+        <canvas id="threatChart"></canvas>
+      </section>
+
+      <section class="panel">
+        <h2>Recent Alerts</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Source IP</th>
+              <th>Attack</th>
+              <th>Risk</th>
+              <th>Explanation</th>
+            </tr>
+          </thead>
+          <tbody id="alertsBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+  </html>
