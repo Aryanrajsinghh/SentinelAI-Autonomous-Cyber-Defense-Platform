@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
@@ -66,7 +66,32 @@ def init_db() -> None:
             """,
             (datetime.utcnow().isoformat(),),
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS blocked_ips (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT NOT NULL UNIQUE,
+                reason TEXT NOT NULL,
+                timestamp TEXT NOT NULL
+            )
+            """
+        )
         conn.commit()
+
+
+def _row_to_alert(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "src_ip": row["src_ip"],
+        "attack_type": row["attack_type"],
+        "confidence": row["confidence"],
+        "anomaly_score": row["anomaly_score"],
+        "risk_score": row["risk_score"],
+        "risk_level": row["risk_level"],
+        "explanation": row["explanation"],
+        "recommended_actions": json.loads(row["recommended_actions"]),
+        "created_at": datetime.fromisoformat(row["created_at"]),
+    }
 
 
 def insert_alert(payload: dict) -> int:
@@ -103,43 +128,16 @@ def fetch_alerts(limit: int = 50) -> list[dict]:
             (limit,),
         )
         rows = cur.fetchall()
-    out = []
-    for r in rows:
-        out.append(
-            {
-                "id": r["id"],
-                "src_ip": r["src_ip"],
-                "attack_type": r["attack_type"],
-                "confidence": r["confidence"],
-                "anomaly_score": r["anomaly_score"],
-                "risk_score": r["risk_score"],
-                "risk_level": r["risk_level"],
-                "explanation": r["explanation"],
-                "recommended_actions": json.loads(r["recommended_actions"]),
-                "created_at": datetime.fromisoformat(r["created_at"]),
-            }
-        )
-    return out
+    return [_row_to_alert(row) for row in rows]
 
 
 def fetch_alert(alert_id: int) -> dict | None:
     with get_conn() as conn:
         cur = conn.execute("SELECT * FROM alerts WHERE id = ?", (alert_id,))
-        r = cur.fetchone()
-    if not r:
+        row = cur.fetchone()
+    if not row:
         return None
-    return {
-        "id": r["id"],
-        "src_ip": r["src_ip"],
-        "attack_type": r["attack_type"],
-        "confidence": r["confidence"],
-        "anomaly_score": r["anomaly_score"],
-        "risk_score": r["risk_score"],
-        "risk_level": r["risk_level"],
-        "explanation": r["explanation"],
-        "recommended_actions": json.loads(r["recommended_actions"]),
-        "created_at": datetime.fromisoformat(r["created_at"]),
-    }
+    return _row_to_alert(row)
 
 
 def fetch_threat_stats() -> list[dict]:
@@ -153,10 +151,9 @@ def fetch_threat_stats() -> list[dict]:
             """
         )
         rows = cur.fetchall()
-
     return [
-        {"attack_type": r["attack_type"], "count": r["count"], "avg_risk": round(r["avg_risk"] or 0, 2)}
-        for r in rows
+        {"attack_type": row["attack_type"], "count": row["count"], "avg_risk": round(row["avg_risk"] or 0, 2)}
+        for row in rows
     ]
 
 
@@ -180,3 +177,58 @@ def set_ingestion_row(last_row: int) -> None:
             (int(last_row), datetime.utcnow().isoformat()),
         )
         conn.commit()
+
+
+def is_ip_blocked(ip: str) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("SELECT 1 FROM blocked_ips WHERE ip = ?", (ip,))
+        return cur.fetchone() is not None
+
+
+def add_blocked_ip(ip: str, reason: str) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            """
+            INSERT OR IGNORE INTO blocked_ips (ip, reason, timestamp)
+            VALUES (?, ?, ?)
+            """,
+            (ip, reason, datetime.utcnow().isoformat()),
+        )
+        conn.commit()
+        if cur.lastrowid:
+            return int(cur.lastrowid)
+        cur = conn.execute("SELECT id FROM blocked_ips WHERE ip = ?", (ip,))
+        row = cur.fetchone()
+        return int(row["id"]) if row else 0
+
+
+def fetch_blocked_ip(ip: str) -> dict | None:
+    with get_conn() as conn:
+        cur = conn.execute("SELECT * FROM blocked_ips WHERE ip = ?", (ip,))
+        row = cur.fetchone()
+    if not row:
+        return None
+    return {
+        "id": row["id"],
+        "ip": row["ip"],
+        "reason": row["reason"],
+        "timestamp": row["timestamp"],
+    }
+
+
+def fetch_blocked_ips(limit: int = 100) -> list[dict]:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "SELECT * FROM blocked_ips ORDER BY datetime(timestamp) DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cur.fetchall()
+    return [
+        {
+            "id": row["id"],
+            "ip": row["ip"],
+            "reason": row["reason"],
+            "timestamp": row["timestamp"],
+        }
+        for row in rows
+    ]

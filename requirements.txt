@@ -8,3 +8,4 @@ joblib
 sqlalchemy
 aiosqlite
 jinja2
+geoip2

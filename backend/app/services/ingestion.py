@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 from datetime import datetime
@@ -7,6 +7,7 @@ import hashlib
 
 import pandas as pd
 
+from ...response_engine import process_response
 from ..db import get_ingestion_row, insert_alert, set_ingestion_row
 from .detector import ThreatDetector
 from .explain_engine import explain
@@ -85,20 +86,21 @@ class LogIngestionWorker:
                 frequency=frequency_estimate,
             )
 
-            insert_alert(
-                {
-                    "src_ip": sample["src_ip"],
-                    "attack_type": attack_type,
-                    "confidence": round(confidence, 4),
-                    "anomaly_score": round(anomaly_score, 4),
-                    "risk_score": risk_score,
-                    "risk_level": risk_level,
-                    "explanation": explain(attack_type, sample),
-                    "recommended_actions": recommend(attack_type),
-                    "created_at": datetime.utcnow(),
-                    "event_key": self._build_event_key(row, idx),
-                }
-            )
+            alert_payload = {
+                "src_ip": sample["src_ip"],
+                "attack_type": attack_type,
+                "confidence": round(confidence, 4),
+                "anomaly_score": round(anomaly_score, 4),
+                "risk_score": risk_score,
+                "risk_level": risk_level,
+                "explanation": explain(attack_type, sample),
+                "recommended_actions": recommend(attack_type),
+                "created_at": datetime.utcnow(),
+                "event_key": self._build_event_key(row, idx),
+            }
+            alert_id = insert_alert(alert_payload)
+            if alert_id:
+                process_response({**alert_payload, "id": alert_id})
 
         if end > start:
             set_ingestion_row(end)

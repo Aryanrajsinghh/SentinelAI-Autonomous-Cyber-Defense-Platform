@@ -47,14 +47,31 @@ function upsertChart(labels, data) {
             label: "Alert Count",
             data,
             borderWidth: 1,
+            backgroundColor: "rgba(56, 189, 248, 0.55)",
+            borderColor: "rgba(56, 189, 248, 0.9)",
           },
         ],
       },
       options: {
         responsive: true,
         animation: false,
+        plugins: {
+          legend: {
+            labels: {
+              color: "#e5e7eb",
+            },
+          },
+        },
         scales: {
-          y: { beginAtZero: true },
+          x: {
+            ticks: { color: "#9ca3af" },
+            grid: { color: "rgba(31, 41, 55, 0.35)" },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: "#9ca3af" },
+            grid: { color: "rgba(31, 41, 55, 0.35)" },
+          },
         },
       },
     });

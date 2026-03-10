@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 from datetime import datetime
@@ -9,13 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .db import init_db, insert_alert, fetch_alerts, fetch_alert, fetch_threat_stats
+from ..investigation_engine import build_investigation_report
+from ..response_engine import list_responses, process_response
+from ..routes_map import router as map_router
+from .db import fetch_alert, fetch_alerts, fetch_threat_stats, init_db, insert_alert
 from .schemas import DetectRequest, DetectResponse
 from .services.detector import ThreatDetector
-from .services.ingestion import LogIngestionWorker
-from .services.risk_engine import compute_risk_score
 from .services.explain_engine import explain
+from .services.ingestion import LogIngestionWorker
 from .services.mitigation_engine import recommend
+from .services.risk_engine import compute_risk_score
 
 
 app = FastAPI(title="SentinelAI - Autonomous Cyber Defense Platform", version="0.1.0")
@@ -32,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/frontend", StaticFiles(directory=frontend_dir), name="frontend")
+app.include_router(map_router)
 
 
 @app.on_event("startup")
@@ -95,7 +99,9 @@ def detect(payload: DetectRequest) -> DetectResponse:
     }
 
     if threat_detected:
-        insert_alert(alert_payload)
+        alert_id = insert_alert(alert_payload)
+        if alert_id:
+            process_response({**alert_payload, "id": alert_id})
 
     return DetectResponse(
         threat_detected=threat_detected,
@@ -130,3 +136,16 @@ def risk_score(alert_id: int) -> dict:
 @app.get("/threats")
 def threats() -> dict:
     return {"items": fetch_threat_stats()}
+
+
+@app.get("/investigation/{alert_id}")
+def investigation(alert_id: int) -> dict:
+    alert = fetch_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return build_investigation_report(alert)
+
+
+@app.get("/responses")
+def responses(limit: int = 100) -> dict:
+    return {"items": list_responses(limit=limit)}

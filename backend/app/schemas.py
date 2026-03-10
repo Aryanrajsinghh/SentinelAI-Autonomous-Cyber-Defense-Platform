@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -35,3 +35,43 @@ class AlertItem(BaseModel):
     explanation: str
     recommended_actions: list[str]
     created_at: datetime
+
+
+class AttackMapItem(BaseModel):
+    id: int
+    ip: str
+    attack_type: str
+    risk_score: int
+    timestamp: datetime
+    country: str
+    lat: float
+    lon: float
+    confidence: float
+
+
+class InvestigationResponse(BaseModel):
+    alert_id: int
+    attack_type: str
+    source_ip: str
+    country: str
+    risk_score: int
+    summary: dict
+    analysis: list[str]
+    recommended_actions: list[str]
+    response_status: dict
+
+
+class ResponseActionItem(BaseModel):
+    id: int
+    ip: str
+    reason: str
+    timestamp: datetime | str
+
+
+class SecurityChatRequest(BaseModel):
+    question: str = Field(min_length=1)
+
+
+class SecurityChatResponse(BaseModel):
+    answer: str
+    timestamp: datetime
